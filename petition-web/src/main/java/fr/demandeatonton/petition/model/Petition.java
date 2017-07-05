@@ -1,12 +1,12 @@
 package fr.demandeatonton.petition.model;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Petition {
    private int id;
    private String name;
    private String author;
+   private String description;
    private int goal;
    private List<PetitionSigner> signers;
 
@@ -14,11 +14,12 @@ public class Petition {
       super();
    }
 
-   public Petition(String name, String author, int goal) {
+   public Petition(String name, String author, String description, int goal) {
+      super();
       this.name = name;
       this.author = author;
+      this.description = description;
       this.goal = goal;
-      this.signers = new ArrayList<>();
    }
 
    public int getId() {
@@ -45,6 +46,14 @@ public class Petition {
       this.author = author;
    }
 
+   public String getDescription() {
+      return description;
+   }
+
+   public void setDescription(String description) {
+      this.description = description;
+   }
+
    public int getGoal() {
       return goal;
    }
@@ -66,6 +75,7 @@ public class Petition {
       final int prime = 31;
       int result = 1;
       result = prime * result + ((author == null) ? 0 : author.hashCode());
+      result = prime * result + ((description == null) ? 0 : description.hashCode());
       result = prime * result + goal;
       result = prime * result + id;
       result = prime * result + ((name == null) ? 0 : name.hashCode());
@@ -85,6 +95,11 @@ public class Petition {
          if (other.author != null)
             return false;
       } else if (!author.equals(other.author))
+         return false;
+      if (description == null) {
+         if (other.description != null)
+            return false;
+      } else if (!description.equals(other.description))
          return false;
       if (goal != other.goal)
          return false;

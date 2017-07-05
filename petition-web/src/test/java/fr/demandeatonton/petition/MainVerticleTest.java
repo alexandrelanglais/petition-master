@@ -26,8 +26,6 @@ public class MainVerticleTest {
    private final static String PATH_ADD_PETITION = "/rest/add";
    private final static String PATH_LIST_PETITIONS = "/rest/list";
    private final static String EXPECTED_MESSAGE = "Hello World!";
-   private final static String EXPECTED_ADD_PETITION_MESSAGE = "Petition added";
-   private final static String EXPECTED_LIST_PETITIONS_MESSAGE = "List of petitions";
 
    @Before
    public void before(final TestContext context) {
@@ -59,8 +57,9 @@ public class MainVerticleTest {
       // On créé un objet pétition
       final String NAME = "Petition contre la corruption";
       final String AUTHOR = "tonton@demandeatonton.fr";
+      final String DESCRIPTION = "Il y a trop de corruption dans le monde bla bla bla";
       final int GOAL = 50;
-      Petition petition = new Petition(NAME, AUTHOR, GOAL);
+      Petition petition = new Petition(NAME, AUTHOR, DESCRIPTION, GOAL);
 
       // On le convertit en Json et on l'envoit dans la requête POST
       String json = Json.encodePrettily(petition);
@@ -69,7 +68,6 @@ public class MainVerticleTest {
       ro.setPort(PORT);
       ro.setURI(PATH_ADD_PETITION);
 
-      System.out.println(json);
       vertx.createHttpClient().post(ro)
             .putHeader("Content-Length", String.valueOf(json.length()))
             .putHeader("Content-Type", "application/json")
@@ -91,8 +89,6 @@ public class MainVerticleTest {
       vertx.createHttpClient().getNow(PORT, HOST, PATH_LIST_PETITIONS, response -> {
          response.handler(body -> {
             context.assertEquals(response.statusCode(), 200);
-            // List<Petition> listPetitions = Json.decodeValue(body.toString(), List.class);
-            // context.assertTrue(listPetitions.size() > 0);
             async.complete();
          });
       });

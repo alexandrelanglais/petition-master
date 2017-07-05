@@ -1,5 +1,8 @@
 package fr.demandeatonton.petition;
 
+import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicReference;
+
 import fr.demandeatonton.petition.model.Petition;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -51,7 +54,7 @@ public class MainVerticle extends AbstractVerticle {
 
    private SQLClient getClient() {
       JsonObject config = new JsonObject()
-            .put("url", "jdbc:hsqldb:mem:petition?shutdown=true")
+            .put("url", "jdbc:hsqldb:mem:petition?shutdown=true;hsqldb.applog=2")
             .put("driver_class", "org.hsqldb.jdbcDriver")
             .put("max_pool_size", 30);
 
@@ -69,7 +72,7 @@ public class MainVerticle extends AbstractVerticle {
             SQLConnection connection = res.result();
 
             connection.query(
-                  "CREATE TABLE petitions (id int, name varchar(100), author varchar(100), description varchar(100), goal int)",
+                  "CREATE TABLE petitions (id int identity primary key, name varchar(100), author varchar(100), description varchar(100), goal int)",
                   res2 -> {
                      if (!res2.succeeded()) {
                         throw new RuntimeException("Can't create in memory database");
@@ -83,38 +86,56 @@ public class MainVerticle extends AbstractVerticle {
 
    private void addPetition(RoutingContext routingContext) {
       Petition petition = Json.decodeValue(routingContext.getBodyAsString(), Petition.class);
-      System.out.println("Adding a petition");
-      routingContext.response().setStatusCode(201).putHeader("content-type", "application/json; charset=utf-8")
-            .end(Json.encodePrettily(petition));
+      String sql = "INSERT INTO petitions(name, author, description, goal) VALUES('" + petition.getName() + "', '"
+            + petition.getAuthor() + "', '" + petition.getDescription() + "', " + petition.getGoal() + ")";
+      System.out.println("Adding a petition: " + sql);
+      try {
+         queryDb(sql);
+         routingContext.response().setStatusCode(201)
+               .putHeader("content-type", "application/json; charset=utf-8")
+               .end(Json.encodePrettily(petition));
+      } catch (SQLException e) {
+         routingContext.response().setStatusCode(500)
+               .putHeader("content-type", "application/json; charset=utf-8")
+               .end("error: can't connect to database");
+
+      }
+
    }
 
    private void listPetitions(RoutingContext routingContext) {
       System.out.println("Listing petitions");
+      try {
+         ResultSet rs = queryDb("SELECT * FROM petitions");
+
+         routingContext.response().setStatusCode(200)
+               .putHeader("content-type", "application/json; charset=utf-8")
+               .end(rs.toJson().encodePrettily());
+      } catch (SQLException e) {
+         routingContext.response().setStatusCode(200)
+               .putHeader("content-type", "application/json; charset=utf-8")
+               .end("error: can't connect to database");
+      }
+   }
+
+   private ResultSet queryDb(String sql) throws SQLException {
       SQLClient client = getClient();
+      final AtomicReference<ResultSet> resultSet = new AtomicReference<>();
 
       client.getConnection(res -> {
          if (res.succeeded()) {
-
             SQLConnection connection = res.result();
 
-            connection.query("SELECT * FROM petitions", res2 -> {
+            connection.query(sql, res2 -> {
                if (res2.succeeded()) {
-
-                  ResultSet rs = res2.result();
-                  routingContext.response().setStatusCode(200)
-                        .putHeader("content-type", "application/json; charset=utf-8")
-                        .end(rs.toJson().encodePrettily());
-               } else {
-                  routingContext.response().setStatusCode(200)
-                        .putHeader("content-type", "application/json; charset=utf-8")
-                        .end("error: can't connect to database");
-
+                  resultSet.set(res2.result());
                }
             });
-         } else {
-            routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
-                  .end("error: can't connect to database");
          }
       });
+      if (resultSet.get() == null)
+         throw new SQLException();
+
+      return resultSet.get();
    }
 }
