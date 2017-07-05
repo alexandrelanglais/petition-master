@@ -1,5 +1,7 @@
 package fr.demandeatonton.petition;
 
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -25,6 +27,7 @@ public class MainVerticleTest {
    private final static String PATH = "/";
    private final static String PATH_ADD_PETITION = "/rest/add";
    private final static String PATH_LIST_PETITIONS = "/rest/list";
+   private final static String PATH_GET_FIRST_PETITION = "/rest/get/0";
    private final static String EXPECTED_MESSAGE = "Hello World!";
 
    @Before
@@ -51,7 +54,7 @@ public class MainVerticleTest {
       });
    }
 
-   @Test
+   @Ignore
    public void canIAddAPetition(final TestContext context) {
       final Async async = context.async();
       // On créé un objet pétition
@@ -68,10 +71,8 @@ public class MainVerticleTest {
       ro.setPort(PORT);
       ro.setURI(PATH_ADD_PETITION);
 
-      vertx.createHttpClient().post(ro)
-            .putHeader("Content-Length", String.valueOf(json.length()))
-            .putHeader("Content-Type", "application/json")
-            .handler(response -> {
+      vertx.createHttpClient().post(ro).putHeader("Content-Length", String.valueOf(json.length()))
+            .putHeader("Content-Type", "application/json").handler(response -> {
                context.assertEquals(response.statusCode(), 201);
                context.assertTrue(response.headers().get("content-type").contains("application/json"));
                response.bodyHandler(body -> {
@@ -89,19 +90,22 @@ public class MainVerticleTest {
       vertx.createHttpClient().getNow(PORT, HOST, PATH_LIST_PETITIONS, response -> {
          response.handler(body -> {
             context.assertEquals(response.statusCode(), 200);
+            List<Petition> lstPetitions = Json.decodeValue(body.toString(), List.class);
+            context.assertTrue(lstPetitions.size() > 0);
             async.complete();
          });
       });
    }
 
-   @Ignore
+   @Test
    public void canIRetrieveFirstPetition(final TestContext context) {
       final Async async = context.async();
 
-      vertx.createHttpClient().getNow(PORT, HOST, PATH_LIST_PETITIONS, response -> {
+      vertx.createHttpClient().getNow(PORT, HOST, PATH_GET_FIRST_PETITION, response -> {
          response.handler(body -> {
-            System.out.println(body.toString());
-            context.assertTrue(body.toString().contains(EXPECTED_MESSAGE));
+            context.assertEquals(response.statusCode(), 200);
+            Petition petition = Json.decodeValue(body.toString(), Petition.class);
+            context.assertEquals(petition.getId(), 0);
             async.complete();
          });
       });

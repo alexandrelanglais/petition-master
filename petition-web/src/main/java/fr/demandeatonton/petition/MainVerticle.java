@@ -1,7 +1,6 @@
 package fr.demandeatonton.petition;
 
-import java.sql.SQLException;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 import fr.demandeatonton.petition.model.Petition;
 import io.vertx.core.AbstractVerticle;
@@ -18,6 +17,8 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
 public class MainVerticle extends AbstractVerticle {
+   private final static Logger log = Logger.getLogger(MainVerticle.class.getName());
+
    @Override
    public void start(Future<Void> fut) {
       // On va créer notre base de données temporaire
@@ -35,7 +36,10 @@ public class MainVerticle extends AbstractVerticle {
       // On bind nos services REST
       router.route("/rest/list").handler(this::listPetitions);
 
-      // On permet la lecture du corps de la requête pour toutes les routes commençant
+      router.route("/rest/get/:id").handler(this::getPetition);
+
+      // On permet la lecture du corps de la requête pour toutes les routes
+      // commençant
       // par add
       router.route("/rest/add*").handler(BodyHandler.create());
 
@@ -53,17 +57,15 @@ public class MainVerticle extends AbstractVerticle {
    }
 
    private SQLClient getClient() {
-      JsonObject config = new JsonObject()
-            .put("url", "jdbc:hsqldb:mem:petition?shutdown=true;hsqldb.applog=2")
-            .put("driver_class", "org.hsqldb.jdbcDriver")
-            .put("max_pool_size", 30);
+      JsonObject config = new JsonObject().put("url", "jdbc:hsqldb:mem:petition?shutdown=true;hsqldb.applog=2")
+            .put("driver_class", "org.hsqldb.jdbcDriver").put("max_pool_size", 30);
 
       SQLClient client = JDBCClient.createShared(vertx, config);
       return client;
    }
 
    private void createMemoryDatabase() {
-      System.out.println("Creating in memory database");
+      log.info("Creating in memory database");
       SQLClient client = getClient();
 
       client.getConnection(res -> {
@@ -88,54 +90,86 @@ public class MainVerticle extends AbstractVerticle {
       Petition petition = Json.decodeValue(routingContext.getBodyAsString(), Petition.class);
       String sql = "INSERT INTO petitions(name, author, description, goal) VALUES('" + petition.getName() + "', '"
             + petition.getAuthor() + "', '" + petition.getDescription() + "', " + petition.getGoal() + ")";
-      System.out.println("Adding a petition: " + sql);
-      try {
-         queryDb(sql);
-         routingContext.response().setStatusCode(201)
-               .putHeader("content-type", "application/json; charset=utf-8")
-               .end(Json.encodePrettily(petition));
-      } catch (SQLException e) {
-         routingContext.response().setStatusCode(500)
-               .putHeader("content-type", "application/json; charset=utf-8")
-               .end("error: can't connect to database");
+      log.info("Adding a petition: " + sql);
+      Future<ResultSet> future = Future.future();
+      future.setHandler(event -> {
 
-      }
+         log.info("Event succeeded : " + event.succeeded());
+         if (event.failed()) {
+            routingContext.response().setStatusCode(500).putHeader("content-type", "application/json; charset=utf-8")
+                  .end("error: can't connect to database");
+         } else {
+            ResultSet rs = event.result();
+            routingContext.response().setStatusCode(201).putHeader("content-type", "application/json; charset=utf-8")
+                  .end(Json.encodePrettily(petition));
+         }
+      });
+      queryDb(sql, future);
 
    }
 
    private void listPetitions(RoutingContext routingContext) {
-      System.out.println("Listing petitions");
-      try {
-         ResultSet rs = queryDb("SELECT * FROM petitions");
+      log.info("Listing petitions");
+      Future<ResultSet> future = Future.future();
+      future.setHandler(event -> {
+         log.info("Event succeeded : " + event.succeeded());
 
-         routingContext.response().setStatusCode(200)
-               .putHeader("content-type", "application/json; charset=utf-8")
-               .end(rs.toJson().encodePrettily());
-      } catch (SQLException e) {
-         routingContext.response().setStatusCode(200)
-               .putHeader("content-type", "application/json; charset=utf-8")
-               .end("error: can't connect to database");
-      }
+         if (event.failed()) {
+            routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
+                  .end("error: can't connect to database");
+         } else {
+            ResultSet rs = event.result();
+
+            routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
+                  .end(rs.toJson().encodePrettily());
+         }
+      });
+      queryDb("SELECT * FROM petitions", future);
    }
 
-   private ResultSet queryDb(String sql) throws SQLException {
+   private void getPetition(RoutingContext routingContext) {
+      log.info("Getting petition");
+      String id = routingContext.request().getParam("id");
+      if (id == null) {
+         routingContext.response().setStatusCode(400).end();
+         return;
+      }
+      Future<ResultSet> future = Future.future();
+      future.setHandler(event -> {
+         log.info("Event succeeded : " + event.succeeded());
+         if (event.failed()) {
+            routingContext.response().setStatusCode(500).putHeader("content-type", "application/json; charset=utf-8")
+                  .end("error: can't connect to database");
+         } else {
+            ResultSet rs = event.result();
+            log.info("Result is " + rs);
+            routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
+                  .end(rs.getResults().get(0).toString());
+         }
+      });
+      queryDb("SELECT * FROM petitions WHERE id = " + id, future);
+
+   }
+
+   private void queryDb(String sql, final Future<ResultSet> callback) {
       SQLClient client = getClient();
-      final AtomicReference<ResultSet> resultSet = new AtomicReference<>();
 
       client.getConnection(res -> {
          if (res.succeeded()) {
+            log.info("Connection succeeded");
             SQLConnection connection = res.result();
 
             connection.query(sql, res2 -> {
                if (res2.succeeded()) {
-                  resultSet.set(res2.result());
+                  log.info("Query succeeded");
+                  callback.complete(res2.result());
+               } else {
+                  callback.fail(res2.cause());
                }
             });
+         } else {
+            callback.fail(res.cause());
          }
       });
-      if (resultSet.get() == null)
-         throw new SQLException();
-
-      return resultSet.get();
    }
 }
