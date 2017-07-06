@@ -1,0 +1,109 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+<link rel="import" href="components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="components/neon-animation/animations/fade-out-animation.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-view2">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+
+        padding: 10px;
+      }
+    </style>
+
+    <div class="card">
+      <h1>Ajouter une pétition</h1>
+	    <iron-ajax id="ajax"
+	        method="post"
+	        url="http://localhost:8080/rest/add"
+	        handle-as="json"
+	        content-type="application/json">
+	    </iron-ajax>
+	    <iron-form id="ironform" headers='{"Content-Type" : "application/json"}'>
+		    <form id="form1" method="post" action="http://localhost:8080/rest/add" enctype="application/json">
+				<paper-input label="Titre de la pétition" name="name" value="testName" required="true" minlength="10"></paper-input>
+				<paper-input label="Votre email" name="author" value="testMail"  required="true">
+				  <iron-icon icon="mail" slot="prefix"></iron-icon>
+				</paper-input>
+				<paper-input label="Objectif de signatures" name="goal" value="50" min="10" max="500000" type="number">
+				  <iron-icon icon="mail" slot="prefix"></iron-icon>
+				  <div slot="suffix">signatures</div>
+				</paper-input>
+				<paper-textarea label="Texte de la pétition" name="description" charCounter="true" maxlength="150" value="testDescription"></paper-textarea>
+				<paper-button raised id="submitButton">Submit</paper-button>
+            </form>
+      </iron-form>
+		<paper-dialog entry-animation="scale-up-animation"
+		              exit-animation="fade-out-animation" id="dialog" modal="true">
+		  <h2>Succès</h2>
+		  <div>Pétition ajoutée</div>
+          <paper-button raised id="closeDialog">Fermer</paper-button>
+		</paper-dialog>
+   </div>
+	<script>
+	</script>
+  </template>
+  <script>
+    class MyView2 extends Polymer.Element {
+      static get is() { return 'my-view2'; }
+	  constructor() {
+		  super();
+	  }
+	  ready() {
+		  super.ready();
+		  console.log("ready");
+		  this.$.submitButton.addEventListener('click', e => this.handleSubmit(e));
+		  this.$.closeDialog.addEventListener('click', e => this.closeDialog());
+		  this.$.ironform.addEventListener('iron-form-response', e => this.handleResponse(e));
+//		  this.$.ironform.addEventListener('iron-form-presubmit', e => this.handlePreSubmit(e));
+	  }
+	  attributeChangedCallback() {
+		  super.attributeChangedCallback();
+		  console.log("attribute changed");
+	  }
+	  handleSubmit(e) {
+		  this.$.ironform.submit()
+//		  this.$.ajax.generateRequest();
+	  }
+	  handlePreSubmit(e) {
+		  console.log("json envoyé: " + this.json(e.detail));
+//		  this.$.ironform.submit();
+//		  this.$.ajax.generateRequest();
+	  }
+	  handleResponse(e) {
+		  if(e.detail.response !== 'undefined') {
+			  this.$.dialog.open();
+		  }
+		  
+	  }
+	  closeDialog() {
+		  this.$.dialog.close();
+	  }
+	  json(obj) {
+		    return JSON.stringify(obj);
+	  }
+    }
+
+    window.customElements.define(MyView2.is, MyView2);
+  </script>
+
+</dom-module>

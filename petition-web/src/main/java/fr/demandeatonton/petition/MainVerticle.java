@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import fr.demandeatonton.petition.model.Petition;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -15,6 +16,7 @@ import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 
 public class MainVerticle extends AbstractVerticle {
    private final static Logger log = Logger.getLogger(MainVerticle.class.getName());
@@ -26,7 +28,8 @@ public class MainVerticle extends AbstractVerticle {
 
       // On créé un objet Router
       Router router = Router.router(vertx);
-
+      router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST)
+            .allowedMethod(HttpMethod.OPTIONS).allowedHeader("X-PINGARUNER").allowedHeader("Content-Type"));
       // On bind "/" à notre message de bienvenue
       router.route("/").handler(routingContext -> {
          HttpServerResponse response = routingContext.response();
@@ -111,6 +114,7 @@ public class MainVerticle extends AbstractVerticle {
    private void listPetitions(RoutingContext routingContext) {
       log.info("Listing petitions");
       Future<ResultSet> future = Future.future();
+
       future.setHandler(event -> {
          log.info("Event succeeded : " + event.succeeded());
 
@@ -121,7 +125,7 @@ public class MainVerticle extends AbstractVerticle {
             ResultSet rs = event.result();
 
             routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
-                  .end(rs.toJson().encodePrettily());
+                  .end(Json.encodePrettily(rs.getRows()));
          }
       });
       queryDb("SELECT * FROM petitions", future);
@@ -172,4 +176,5 @@ public class MainVerticle extends AbstractVerticle {
          }
       });
    }
+
 }
