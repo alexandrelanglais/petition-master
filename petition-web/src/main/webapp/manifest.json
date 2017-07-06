@@ -1,0 +1,7 @@
+{
+  "name": "petition-polymer",
+  "short_name": "petition-polymer",
+  "description": "A petition system with polymer",
+  "start_url": "/",
+  "display": "standalone"
+}

@@ -144,7 +144,7 @@ public class MainVerticle extends AbstractVerticle {
             ResultSet rs = event.result();
             log.info("Result is " + rs);
             routingContext.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
-                  .end(rs.getResults().get(0).toString());
+                  .end(Json.encode(rs.getResults()));
          }
       });
       queryDb("SELECT * FROM petitions WHERE id = " + id, future);
