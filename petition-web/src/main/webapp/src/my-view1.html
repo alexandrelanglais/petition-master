@@ -12,6 +12,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="shared-styles.html">
 <link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
 <link rel="import" href="../bower_components/iron-list/iron-list.html">
+<link rel="import" href="../bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-body.html">
+<link rel="import" href="../bower_components/paper-item/paper-icon-item.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-shared-styles.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-behavior.html">
 
 <dom-module id="my-view1">
   <template>
@@ -27,12 +33,36 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <h1>Liste des pétitions</h1>
 		<iron-list items="[[listPetitions]]" as="petition">
 		  <template>
-		    <div>
-		      Name: [[petition.NAME]] - Author : [[petition.AUTHOR]] - Goal : [[petition.GOAL]]<br/>
-		      [[petition.DESCRIPTION]]
+		    <div role="listbox">
+              <paper-icon-item>
+                <div class="avatar blue" slot="item-icon"></div>
+                <paper-item-body two-line>
+                  <div>[[petition.NAME]]</div>
+                  <div secondary>[[petition.AUTHOR]]</div>
+                </paper-item-body>
+                <paper-icon-button icon="star" alt="Sign petition">
+                </paper-icon-button>
+              </paper-icon-item>
+              
+              <paper-progress value="0" secondary-progress="[[petition.GOAL]]"></paper-progress>          
+              <hr/>
 		    </div>
 		  </template>
 		</iron-list>
+        <div role="listbox">
+              <paper-icon-item>
+                <div class="avatar blue" slot="item-icon"></div>
+                <paper-item-body two-line>
+                  <div>toto</div>
+                  <div secondary>titi</div>
+                </paper-item-body>
+                <paper-icon-button icon="star" alt="Sign petition">
+                </paper-icon-button>
+              </paper-icon-item>
+              
+              <paper-progress value="0" secondary-progress="[[petition.GOAL]]"></paper-progress>          
+              <hr/>
+        </div>
     </div>
   </template>
 
